@@ -1,34 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-
-
 namespace SUS.HTTP
 {
     public class HttpServer : IHttpServer
     {
-        Dictionary<string, Func<HttpRequest, HttpResponse>> routeTable = new Dictionary<string, Func<HttpRequest, HttpResponse>>();
+        List<Route> routeTable = new List<Route>();
 
-        public void AddRoute(string path, Func<HttpRequest, HttpResponse> action)
+        public HttpServer(List<Route> routeTable)
         {
-            // Ако не го съдържа го създай
-            if (!routeTable.ContainsKey(path))
-            {
-                routeTable[path] = action;
-            }
-            // ако го съдържа го обнови
-            else
-            {
-                routeTable[path] = action;
-            }
+            this.routeTable = routeTable;
         }
 
-        public async Task Start(int port = 80)
+        public async Task StartAsync(int port = 80)
         {
             //Тук слушам за заявки от браузъра
             TcpListener listener = new TcpListener(IPAddress.Loopback, port);
@@ -80,14 +70,17 @@ namespace SUS.HTTP
 
                
                 HttpResponse response;
-                if (routeTable.ContainsKey(request.Path))
+
+                Route currRoute = routeTable.FirstOrDefault(r => r.Path == request.Path);
+
+                if (currRoute != null)
                 {
-                    var action = routeTable[request.Path];
+                    var action = currRoute.Action;
                     response = action(request);
                 }
                 else
                 {
-                    byte[] fileNotFound = File.ReadAllBytes(@"wwwroot/notFound.html");
+                    byte[] fileNotFound = File.ReadAllBytes(@"views/home/notFound.html");
                     response = new HttpResponse("text/html", fileNotFound, HttpStatusCode.NotFound);
                 }
 
